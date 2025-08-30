@@ -3,7 +3,8 @@
     "allow": [
       "WebFetch(domain:www.faa.gov)",
       "WebSearch",
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:careeremployer.com)"
     ],
     "deny": [],
     "ask": []

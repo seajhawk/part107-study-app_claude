@@ -40,7 +40,7 @@ export default function PracticePageContent() {
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [testHistory, setTestHistory] = useState<TestResult[]>([]);
-  const [testMode, setTestMode] = useState<'full' | 'quick' | 'module'>('quick');
+  const [testMode, setTestMode] = useState<'full' | 'quick' | 'mini' | 'practice' | 'module'>('quick');
   const [selectedModule, setSelectedModule] = useState<string>(moduleFilter || 'all');
   const [showExplanations, setShowExplanations] = useState(false);
 
@@ -87,10 +87,14 @@ export default function PracticePageContent() {
     testQuestions = shuffleArray([...testQuestions]);
 
     // Limit questions based on test mode
-    if (testMode === 'quick') {
+    if (testMode === 'mini') {
+      testQuestions = testQuestions.slice(0, 10);
+    } else if (testMode === 'quick') {
       testQuestions = testQuestions.slice(0, 20);
+    } else if (testMode === 'practice') {
+      testQuestions = testQuestions.slice(0, 50);
     } else if (testMode === 'full') {
-      testQuestions = testQuestions.slice(0, 60);
+      testQuestions = testQuestions.slice(0, 100);
     }
 
     setQuestions(testQuestions);
@@ -211,7 +215,20 @@ export default function PracticePageContent() {
           </p>
 
           {/* Test Mode Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div 
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                testMode === 'mini' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+              }`}
+              onClick={() => setTestMode('mini')}
+            >
+              <div className="flex items-center mb-2">
+                <Target className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="font-semibold">Mini Test</h3>
+              </div>
+              <p className="text-sm text-gray-600">10 questions • ~8 minutes</p>
+            </div>
+
             <div 
               className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                 testMode === 'quick' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
@@ -227,15 +244,15 @@ export default function PracticePageContent() {
 
             <div 
               className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                testMode === 'module' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
+                testMode === 'practice' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
               }`}
-              onClick={() => setTestMode('module')}
+              onClick={() => setTestMode('practice')}
             >
               <div className="flex items-center mb-2">
-                <BookOpen className="h-5 w-5 text-green-600 mr-2" />
-                <h3 className="font-semibold">Module Test</h3>
+                <BookOpen className="h-5 w-5 text-orange-600 mr-2" />
+                <h3 className="font-semibold">Practice Test</h3>
               </div>
-              <p className="text-sm text-gray-600">By topic • Variable length</p>
+              <p className="text-sm text-gray-600">50 questions • ~40 minutes</p>
             </div>
 
             <div 
@@ -248,28 +265,27 @@ export default function PracticePageContent() {
                 <BarChart3 className="h-5 w-5 text-purple-600 mr-2" />
                 <h3 className="font-semibold">Full Exam</h3>
               </div>
-              <p className="text-sm text-gray-600">60 questions • ~2 hours</p>
+              <p className="text-sm text-gray-600">100 questions • ~2 hours</p>
             </div>
           </div>
 
           {/* Module Selection */}
-          {testMode === 'module' && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Study Module
-              </label>
-              <select
-                value={selectedModule}
-                onChange={(e) => setSelectedModule(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Modules</option>
-                {studyModules.map(module => (
-                  <option key={module.id} value={module.id}>{module.title}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Study Module (Optional)
+            </label>
+            <select
+              value={selectedModule}
+              onChange={(e) => setSelectedModule(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Modules</option>
+              {studyModules.map(module => (
+                <option key={module.id} value={module.id}>{module.title}</option>
+              ))}
+            </select>
+          </div>
+
 
           {/* Recent Test History */}
           {testHistory.length > 0 && (
@@ -432,10 +448,10 @@ export default function PracticePageContent() {
                           <div className="flex items-center">
                             {isCorrectAnswer && <CheckCircle className="h-5 w-5 text-green-600 mr-2" />}
                             {isSelected && !isCorrect && <XCircle className="h-5 w-5 text-red-600 mr-2" />}
-                            <span className={`${
-                              isCorrectAnswer ? 'font-medium text-green-800' :
-                              isSelected && !isCorrect ? 'font-medium text-red-800' :
-                              'text-gray-700'
+                            <span className={`font-medium ${
+                              isCorrectAnswer ? 'text-green-800' :
+                              isSelected && !isCorrect ? 'text-red-800' :
+                              'text-gray-900'
                             }`}>
                               {option}
                             </span>
@@ -526,7 +542,7 @@ export default function PracticePageContent() {
                 onChange={() => handleAnswerSelect(index)}
                 className="mt-1 mr-3 text-blue-600"
               />
-              <span className="text-gray-900">{option}</span>
+              <span className="text-gray-900 font-medium">{option}</span>
             </label>
           ))}
         </div>
