@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getAllQuestions, getQuestionsByModule, studyModules, Question } from '@/data/studyData';
 import { 
@@ -44,6 +44,50 @@ export default function PracticePageContent() {
   const [selectedModule, setSelectedModule] = useState<string>(moduleFilter || 'all');
   const [showExplanations, setShowExplanations] = useState(false);
 
+  const saveTestResult = useCallback((result: TestResult) => {
+    setTestHistory(prev => {
+      const updatedHistory = [...prev, result];
+      localStorage.setItem('practice-test-history', JSON.stringify(updatedHistory));
+      return updatedHistory;
+    });
+  }, []);
+
+  const generateTestResult = useCallback(() => {
+    if (!testStartTime || questions.length === 0) return;
+
+    const endTime = new Date();
+    const timeSpent = Math.floor((endTime.getTime() - testStartTime.getTime()) / 1000);
+    
+    let correctCount = 0;
+    const answers = questions.map((question, index) => {
+      const selectedAnswer = selectedAnswers[index] ?? -1;
+      const isCorrect = selectedAnswer === question.correctAnswer;
+      if (isCorrect) correctCount++;
+
+      return {
+        questionId: question.id,
+        selectedAnswer,
+        isCorrect,
+        timeSpent: Math.floor(timeSpent / questions.length)
+      };
+    });
+
+    const score = Math.round((correctCount / questions.length) * 100);
+
+    const result: TestResult = {
+      id: `test-${Date.now()}`,
+      date: endTime,
+      score,
+      totalQuestions: questions.length,
+      timeSpent,
+      moduleId: selectedModule === 'all' ? undefined : selectedModule,
+      answers
+    };
+
+    setTestResult(result);
+    saveTestResult(result);
+  }, [testStartTime, questions, selectedAnswers, selectedModule, saveTestResult]);
+
   useEffect(() => {
     loadTestHistory();
   }, []);
@@ -52,7 +96,7 @@ export default function PracticePageContent() {
     if (testCompleted && questions.length > 0) {
       generateTestResult();
     }
-  }, [testCompleted, questions.length]);
+  }, [testCompleted, questions.length, generateTestResult]);
 
   const loadTestHistory = () => {
     const saved = localStorage.getItem('practice-test-history');
@@ -66,12 +110,6 @@ export default function PracticePageContent() {
       });
       setTestHistory(history);
     }
-  };
-
-  const saveTestResult = (result: TestResult) => {
-    const updatedHistory = [...testHistory, result];
-    setTestHistory(updatedHistory);
-    localStorage.setItem('practice-test-history', JSON.stringify(updatedHistory));
   };
 
   const startTest = () => {
@@ -136,42 +174,6 @@ export default function PracticePageContent() {
 
   const submitTest = () => {
     setTestCompleted(true);
-  };
-
-  const generateTestResult = () => {
-    if (!testStartTime || questions.length === 0) return;
-
-    const endTime = new Date();
-    const timeSpent = Math.floor((endTime.getTime() - testStartTime.getTime()) / 1000);
-    
-    let correctCount = 0;
-    const answers = questions.map((question, index) => {
-      const selectedAnswer = selectedAnswers[index] ?? -1;
-      const isCorrect = selectedAnswer === question.correctAnswer;
-      if (isCorrect) correctCount++;
-
-      return {
-        questionId: question.id,
-        selectedAnswer,
-        isCorrect,
-        timeSpent: Math.floor(timeSpent / questions.length)
-      };
-    });
-
-    const score = Math.round((correctCount / questions.length) * 100);
-
-    const result: TestResult = {
-      id: `test-${Date.now()}`,
-      date: endTime,
-      score,
-      totalQuestions: questions.length,
-      timeSpent,
-      moduleId: selectedModule === 'all' ? undefined : selectedModule,
-      answers
-    };
-
-    setTestResult(result);
-    saveTestResult(result);
   };
 
   const resetTest = () => {

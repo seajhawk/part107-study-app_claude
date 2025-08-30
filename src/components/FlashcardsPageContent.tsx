@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getAllFlashcards, getFlashcardsByModule, studyModules, Flashcard } from '@/data/studyData';
 import { 
@@ -41,13 +41,7 @@ export default function FlashcardsPageContent() {
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [sessionStartTime, setSessionStartTime] = useState<Date>(new Date());
 
-  useEffect(() => {
-    loadCards();
-    loadProgress();
-    setSessionStartTime(new Date());
-  }, [selectedModule, difficultyFilter]);
-
-  const loadCards = () => {
+  const loadCards = useCallback(() => {
     let allCards = selectedModule === 'all' 
       ? getAllFlashcards() 
       : getFlashcardsByModule(selectedModule);
@@ -63,7 +57,13 @@ export default function FlashcardsPageContent() {
     setCards(shuffleArray([...allCards]));
     setCurrentCardIndex(0);
     setIsFlipped(false);
-  };
+  }, [selectedModule, difficultyFilter, mode]);
+
+  useEffect(() => {
+    loadCards();
+    loadProgress();
+    setSessionStartTime(new Date());
+  }, [selectedModule, difficultyFilter, loadCards]);
 
   const loadProgress = () => {
     const saved = localStorage.getItem('flashcard-progress');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { studyModules } from '@/data/studyData';
 import { 
   TrendingUp, 
@@ -9,8 +9,6 @@ import {
   Target, 
   Brain, 
   Trophy,
-  BarChart3,
-  PieChart,
   Activity,
   CheckCircle,
   XCircle,
@@ -33,56 +31,43 @@ interface StudySession {
   score?: number;
 }
 
-interface FlashcardProgress {
-  cardId: string;
-  interval: number;
-  repetitions: number;
-  easeFactor: number;
-  nextReview: Date;
-  difficulty: number;
-  timesReviewed: number;
-  lastReviewed: Date;
+interface TestResult {
+  id: string;
+  date: Date;
+  moduleId?: string;
+  totalQuestions: number;
+  timeSpent: number;
+  score: number;
+  answers?: Array<{
+    isCorrect: boolean;
+  }>;
 }
 
 export default function ProgressPageContent() {
   const [studySessions, setStudySessions] = useState<StudySession[]>([]);
-  const [flashcardProgress, setFlashcardProgress] = useState<Map<string, FlashcardProgress>>(new Map());
-  const [testResults, setTestResults] = useState<any[]>([]);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'week' | 'month' | 'all'>('week');
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
 
-  useEffect(() => {
-    loadProgressData();
-  }, []);
-
-  const loadProgressData = () => {
-    // Load flashcard progress
-    const flashcardData = localStorage.getItem('flashcard-progress');
-    if (flashcardData) {
-      const progressData = JSON.parse(flashcardData);
-      const progressMap = new Map();
-      Object.entries(progressData).forEach(([key, value]: [string, any]) => {
-        progressMap.set(key, {
-          ...value,
-          nextReview: new Date(value.nextReview),
-          lastReviewed: new Date(value.lastReviewed || Date.now())
-        });
-      });
-      setFlashcardProgress(progressMap);
-    }
-
+  const loadProgressData = useCallback(() => {
     // Load test results
     const testData = localStorage.getItem('practice-test-history');
     if (testData) {
-      const results = JSON.parse(testData).map((test: any) => ({
-        ...test,
-        date: new Date(test.date)
-      }));
+      const results = JSON.parse(testData).map((test: unknown) => {
+        const testObj = test as TestResult & { date: string };
+        return {
+          ...testObj,
+          date: new Date(testObj.date)
+        };
+      });
       setTestResults(results);
     }
 
     // Generate study sessions from available data
     generateStudySessions();
-  };
+  }, []);
+
+  useEffect(() => {
+    loadProgressData();
+  }, [loadProgressData]);
 
   const generateStudySessions = () => {
     const sessions: StudySession[] = [];
@@ -91,7 +76,7 @@ export default function ProgressPageContent() {
     const testData = localStorage.getItem('practice-test-history');
     if (testData) {
       const results = JSON.parse(testData);
-      results.forEach((test: any) => {
+      results.forEach((test: TestResult & { date: string }) => {
         sessions.push({
           id: `test-${test.id}`,
           date: new Date(test.date),
@@ -155,7 +140,7 @@ export default function ProgressPageContent() {
     });
 
     testResults.forEach(test => {
-      test.answers?.forEach((answer: any) => {
+      test.answers?.forEach((answer) => {
         // This is simplified - in a real app you'd need to track question-to-module mapping
         const moduleId = test.moduleId || 'regulations';
         if (modulePerformance[moduleId]) {

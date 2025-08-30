@@ -8,16 +8,9 @@ import {
   Download,
   Upload,
   Trash2,
-  Moon,
-  Sun,
-  Volume2,
-  VolumeX,
   Save,
   RotateCcw,
-  Calendar,
-  Target,
-  Brain,
-  Zap
+  Brain
 } from 'lucide-react';
 
 interface UserSettings {
@@ -97,15 +90,18 @@ export default function SettingsPageContent() {
     setHasChanges(true);
   };
 
-  const updateSettings = (path: string, value: any) => {
+  const updateSettings = (path: string, value: string | number | boolean) => {
     setSettings(prev => {
       const keys = path.split('.');
       const updated = { ...prev };
-      let current: any = updated;
+      let current: Record<string, unknown> = updated as Record<string, unknown>;
       
       for (let i = 0; i < keys.length - 1; i++) {
-        current[keys[i]] = { ...current[keys[i]] };
-        current = current[keys[i]];
+        const currentValue = current[keys[i]];
+        current[keys[i]] = typeof currentValue === 'object' && currentValue !== null 
+          ? { ...currentValue as Record<string, unknown> } 
+          : {};
+        current = current[keys[i]] as Record<string, unknown>;
       }
       
       current[keys[keys.length - 1]] = value;
@@ -152,7 +148,7 @@ export default function SettingsPageContent() {
         }
         setHasChanges(true);
         alert('Data imported successfully!');
-      } catch (error) {
+      } catch {
         alert('Error importing data. Please check the file format.');
       }
     };
@@ -211,7 +207,7 @@ export default function SettingsPageContent() {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id as 'profile' | 'study' | 'notifications' | 'privacy' | 'data')}
                     className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                       activeTab === tab.id
                         ? 'bg-blue-50 text-blue-700 border-blue-200'

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { studyModules, StudyModule, Topic } from '@/data/studyData';
+import { studyModules, Topic } from '@/data/studyData';
 import { 
   BookOpen, 
   ChevronRight, 
@@ -211,7 +211,7 @@ function TopicContent({ topic }: { topic: Topic }) {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as 'overview' | 'keypoints' | 'actions')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
