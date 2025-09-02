@@ -10,8 +10,18 @@ import {
   Trash2,
   Save,
   RotateCcw,
-  Brain
+  Brain,
+  RefreshCw
 } from 'lucide-react';
+import { 
+  getUserSettings, 
+  saveUserSettings, 
+  getUserProgress, 
+  saveUserProgress, 
+  resetUserProgress,
+  migrateFromLocalStorage,
+  type UserProgress 
+} from '@/utils/storage';
 
 interface UserSettings {
   name: string;
@@ -66,23 +76,27 @@ export default function SettingsPageContent() {
 
   useEffect(() => {
     loadSettings();
+    // Check if we need to migrate from localStorage
+    migrateFromLocalStorage();
   }, []);
 
   const loadSettings = () => {
-    const saved = localStorage.getItem('user-settings');
-    if (saved) {
-      try {
-        const parsedSettings = JSON.parse(saved);
-        setSettings({ ...DEFAULT_SETTINGS, ...parsedSettings });
-      } catch (error) {
-        console.error('Error loading settings:', error);
-      }
+    try {
+      const savedSettings = getUserSettings();
+      setSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
+    } catch (error) {
+      console.error('Error loading settings:', error);
     }
   };
 
   const saveSettings = () => {
-    localStorage.setItem('user-settings', JSON.stringify(settings));
-    setHasChanges(false);
+    try {
+      saveUserSettings(settings);
+      setHasChanges(false);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings. Please try again.');
+    }
   };
 
   const resetSettings = () => {
@@ -111,22 +125,27 @@ export default function SettingsPageContent() {
   };
 
   const exportData = () => {
-    const data = {
-      settings,
-      flashcardProgress: localStorage.getItem('flashcard-progress'),
-      testHistory: localStorage.getItem('practice-test-history'),
-      exportDate: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `part107-study-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const data = getUserProgress();
+      const exportData = {
+        ...data,
+        exportDate: new Date().toISOString(),
+        version: '2.0' // Mark as cookie-based export
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `part107-study-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      alert('Error exporting data. Please try again.');
+    }
   };
 
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,18 +156,25 @@ export default function SettingsPageContent() {
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target?.result as string);
-        if (data.settings) {
-          setSettings({ ...DEFAULT_SETTINGS, ...data.settings });
+        
+        // Validate the data structure
+        if (data && typeof data === 'object') {
+          const progressData: UserProgress = {
+            flashcardProgress: data.flashcardProgress || {},
+            testHistory: data.testHistory || [],
+            settings: { ...DEFAULT_SETTINGS, ...data.settings },
+            studySessions: data.studySessions || []
+          };
+          
+          saveUserProgress(progressData);
+          setSettings(progressData.settings);
+          setHasChanges(false);
+          alert('Data imported successfully!');
+        } else {
+          alert('Invalid file format. Please check the file and try again.');
         }
-        if (data.flashcardProgress) {
-          localStorage.setItem('flashcard-progress', data.flashcardProgress);
-        }
-        if (data.testHistory) {
-          localStorage.setItem('practice-test-history', data.testHistory);
-        }
-        setHasChanges(true);
-        alert('Data imported successfully!');
-      } catch {
+      } catch (error) {
+        console.error('Error importing data:', error);
         alert('Error importing data. Please check the file format.');
       }
     };
@@ -157,12 +183,34 @@ export default function SettingsPageContent() {
 
   const clearAllData = () => {
     if (confirm('Are you sure you want to clear all study data? This action cannot be undone.')) {
-      localStorage.removeItem('flashcard-progress');
-      localStorage.removeItem('practice-test-history');
-      localStorage.removeItem('user-settings');
-      setSettings(DEFAULT_SETTINGS);
-      setHasChanges(false);
-      alert('All data cleared successfully.');
+      try {
+        resetUserProgress();
+        setSettings(DEFAULT_SETTINGS);
+        setHasChanges(false);
+        alert('All data cleared successfully.');
+      } catch (error) {
+        console.error('Error clearing data:', error);
+        alert('Error clearing data. Please try again.');
+      }
+    }
+  };
+
+  const resetProgress = () => {
+    if (confirm('Are you sure you want to reset only your study progress? This will keep your settings but clear all flashcard progress, test results, and study sessions.')) {
+      try {
+        const currentProgress = getUserProgress();
+        const resetProgress: UserProgress = {
+          ...currentProgress,
+          flashcardProgress: {},
+          testHistory: [],
+          studySessions: []
+        };
+        saveUserProgress(resetProgress);
+        alert('Study progress reset successfully. Your settings have been preserved.');
+      } catch (error) {
+        console.error('Error resetting progress:', error);
+        alert('Error resetting progress. Please try again.');
+      }
     }
   };
 
@@ -188,8 +236,8 @@ export default function SettingsPageContent() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">⚙️ Settings</h1>
-        <p className="text-gray-600">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">⚙️ Settings</h1>
+        <p className="text-gray-600 dark:text-gray-400">
           Customize your study experience and manage your account preferences
         </p>
       </div>
@@ -197,9 +245,9 @@ export default function SettingsPageContent() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Tab Navigation */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-4 border-b">
-              <h2 className="font-semibold text-gray-900">Settings</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
+            <div className="p-4 border-b dark:border-gray-700">
+              <h2 className="font-semibold text-gray-900 dark:text-white">Settings</h2>
             </div>
             <nav className="p-2">
               {tabs.map((tab) => {
@@ -210,8 +258,8 @@ export default function SettingsPageContent() {
                     onClick={() => setActiveTab(tab.id as 'profile' | 'study' | 'notifications' | 'privacy' | 'data')}
                     className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                       activeTab === tab.id
-                        ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
                   >
                     <Icon className="h-4 w-4 mr-3" />
@@ -225,51 +273,51 @@ export default function SettingsPageContent() {
 
         {/* Content */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-lg shadow-sm border">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Profile Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Profile Information</h3>
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Full Name
                     </label>
                     <input
                       type="text"
                       value={settings.name}
                       onChange={(e) => updateSettings('name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="Enter your full name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Email Address
                     </label>
                     <input
                       type="email"
                       value={settings.email}
                       onChange={(e) => updateSettings('email', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                       placeholder="Enter your email"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Exam Date
                     </label>
                     <input
                       type="date"
                       value={settings.examDate}
                       onChange={(e) => updateSettings('examDate', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                     {daysUntilExam !== null && (
-                      <p className={`text-sm mt-2 ${daysUntilExam > 30 ? 'text-green-600' : daysUntilExam > 7 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      <p className={`text-sm mt-2 ${daysUntilExam > 30 ? 'text-green-600 dark:text-green-400' : daysUntilExam > 7 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
                         {daysUntilExam > 0 
                           ? `${daysUntilExam} days until your exam`
                           : `Your exam was ${Math.abs(daysUntilExam)} days ago`
@@ -279,13 +327,13 @@ export default function SettingsPageContent() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Daily Study Goal (minutes)
                     </label>
                     <select
                       value={settings.studyGoal}
                       onChange={(e) => updateSettings('studyGoal', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
                       <option value={15}>15 minutes</option>
                       <option value={30}>30 minutes</option>
@@ -302,18 +350,18 @@ export default function SettingsPageContent() {
             {/* Study Preferences Tab */}
             {activeTab === 'study' && (
               <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Study Preferences</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Study Preferences</h3>
                 
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Dark Mode</label>
-                      <p className="text-sm text-gray-500">Use dark theme for studying</p>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</label>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Use dark theme for studying</p>
                     </div>
                     <button
                       onClick={() => updateSettings('preferences.darkMode', !settings.preferences.darkMode)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        settings.preferences.darkMode ? 'bg-blue-600' : 'bg-gray-200'
+                        settings.preferences.darkMode ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -326,13 +374,13 @@ export default function SettingsPageContent() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Sound Effects</label>
-                      <p className="text-sm text-gray-500">Play sounds for interactions</p>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sound Effects</label>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Play sounds for interactions</p>
                     </div>
                     <button
                       onClick={() => updateSettings('preferences.soundEffects', !settings.preferences.soundEffects)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        settings.preferences.soundEffects ? 'bg-blue-600' : 'bg-gray-200'
+                        settings.preferences.soundEffects ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -345,13 +393,13 @@ export default function SettingsPageContent() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Auto-advance Questions</label>
-                      <p className="text-sm text-gray-500">Automatically move to next question after answering</p>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Auto-advance Questions</label>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Automatically move to next question after answering</p>
                     </div>
                     <button
                       onClick={() => updateSettings('preferences.autoAdvance', !settings.preferences.autoAdvance)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        settings.preferences.autoAdvance ? 'bg-blue-600' : 'bg-gray-200'
+                        settings.preferences.autoAdvance ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -364,13 +412,13 @@ export default function SettingsPageContent() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Show Explanations</label>
-                      <p className="text-sm text-gray-500">Automatically show explanations after answering</p>
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Show Explanations</label>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Automatically show explanations after answering</p>
                     </div>
                     <button
                       onClick={() => updateSettings('preferences.showExplanations', !settings.preferences.showExplanations)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        settings.preferences.showExplanations ? 'bg-blue-600' : 'bg-gray-200'
+                        settings.preferences.showExplanations ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
                       }`}
                     >
                       <span
@@ -382,13 +430,13 @@ export default function SettingsPageContent() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Flashcard Timer
                     </label>
                     <select
                       value={settings.preferences.flashcardTimer}
                       onChange={(e) => updateSettings('preferences.flashcardTimer', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
                       <option value={0}>No Timer</option>
                       <option value={10}>10 seconds</option>
@@ -396,7 +444,7 @@ export default function SettingsPageContent() {
                       <option value={30}>30 seconds</option>
                       <option value={60}>1 minute</option>
                     </select>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       Time limit for reviewing each flashcard
                     </p>
                   </div>
@@ -530,6 +578,7 @@ export default function SettingsPageContent() {
                     </div>
                     <p className="text-sm text-blue-800 mb-4">
                       Download a backup of all your study data, including progress, test results, and settings.
+                      Data is stored in cookies on your device for privacy.
                     </p>
                     <button
                       onClick={exportData}
@@ -555,6 +604,23 @@ export default function SettingsPageContent() {
                     />
                   </div>
 
+                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="flex items-center mb-3">
+                      <RefreshCw className="h-5 w-5 text-yellow-600 mr-2" />
+                      <h4 className="font-medium text-yellow-900">Reset Progress</h4>
+                    </div>
+                    <p className="text-sm text-yellow-800 mb-4">
+                      Reset your study progress (flashcards, test results, sessions) while keeping your settings.
+                      This allows you to start fresh or let another user use the app.
+                    </p>
+                    <button
+                      onClick={resetProgress}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Reset Progress Only
+                    </button>
+                  </div>
+
                   <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                     <div className="flex items-center mb-3">
                       <Trash2 className="h-5 w-5 text-red-600 mr-2" />
@@ -570,16 +636,29 @@ export default function SettingsPageContent() {
                       Clear All Data
                     </button>
                   </div>
+
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="font-medium text-gray-900 mb-2">Privacy Notice</h4>
+                    <p className="text-sm text-gray-700">
+                      Your study data is stored locally in cookies on your device. This means:
+                    </p>
+                    <ul className="text-sm text-gray-700 mt-2 space-y-1 list-disc list-inside">
+                      <li>No account required - data stays on your device</li>
+                      <li>Multiple users can use the same device</li>
+                      <li>Data persists until you clear it or cookies expire</li>
+                      <li>Export your data before switching devices</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Save/Reset Controls */}
-            <div className="border-t px-6 py-4">
+            <div className="border-t dark:border-gray-700 px-6 py-4">
               <div className="flex items-center justify-between">
                 <button
                   onClick={resetSettings}
-                  className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                  className="flex items-center px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Reset to Defaults
@@ -587,7 +666,7 @@ export default function SettingsPageContent() {
                 
                 <div className="flex items-center space-x-3">
                   {hasChanges && (
-                    <span className="text-sm text-amber-600">You have unsaved changes</span>
+                    <span className="text-sm text-amber-600 dark:text-amber-400">You have unsaved changes</span>
                   )}
                   <button
                     onClick={saveSettings}
@@ -595,7 +674,7 @@ export default function SettingsPageContent() {
                     className={`flex items-center px-6 py-2 rounded-lg font-medium transition-colors ${
                       hasChanges
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
                     }`}
                   >
                     <Save className="h-4 w-4 mr-2" />

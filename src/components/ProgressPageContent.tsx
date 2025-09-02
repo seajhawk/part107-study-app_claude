@@ -18,6 +18,7 @@ import {
   Star
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { getUserProgress, migrateFromLocalStorage } from '@/utils/storage';
 
 interface StudySession {
   id: string;
@@ -38,8 +39,11 @@ interface TestResult {
   totalQuestions: number;
   timeSpent: number;
   score: number;
-  answers?: Array<{
+  answers: Array<{
+    questionId: string;
+    selectedAnswer: number;
     isCorrect: boolean;
+    timeSpent: number;
   }>;
 }
 
@@ -48,51 +52,52 @@ export default function ProgressPageContent() {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
 
   const loadProgressData = useCallback(() => {
-    // Load test results
-    const testData = localStorage.getItem('practice-test-history');
-    if (testData) {
-      const results = JSON.parse(testData).map((test: unknown) => {
-        const testObj = test as TestResult & { date: string };
-        return {
-          ...testObj,
-          date: new Date(testObj.date)
-        };
-      });
+    try {
+      // Attempt to migrate from localStorage if needed
+      migrateFromLocalStorage();
+      
+      const progress = getUserProgress();
+      
+      // Load test results from cookie storage
+      const results = progress.testHistory.map((test) => ({
+        ...test,
+        date: new Date(test.date)
+      }));
       setTestResults(results);
-    }
 
-    // Generate study sessions from available data
-    generateStudySessions();
+      // Load study sessions from cookie storage
+      const sessions = progress.studySessions.map((session) => ({
+        ...session,
+        date: new Date(session.date)
+      }));
+      
+      // Add sessions from test results for backward compatibility
+      results.forEach((test) => {
+        const existingSession = sessions.find(s => s.id === `test-${test.id}`);
+        if (!existingSession) {
+          sessions.push({
+            id: `test-${test.id}`,
+            date: test.date,
+            type: 'practice',
+            moduleId: test.moduleId || 'all',
+            questionsAnswered: test.totalQuestions,
+            timeSpent: test.timeSpent,
+            accuracy: test.score
+          });
+        }
+      });
+
+      // Sort by date
+      sessions.sort((a, b) => b.date.getTime() - a.date.getTime());
+      setStudySessions(sessions);
+    } catch (error) {
+      console.error('Error loading progress data:', error);
+    }
   }, []);
 
   useEffect(() => {
     loadProgressData();
   }, [loadProgressData]);
-
-  const generateStudySessions = () => {
-    const sessions: StudySession[] = [];
-    
-    // Add sessions from test results
-    const testData = localStorage.getItem('practice-test-history');
-    if (testData) {
-      const results = JSON.parse(testData);
-      results.forEach((test: TestResult & { date: string }) => {
-        sessions.push({
-          id: `test-${test.id}`,
-          date: new Date(test.date),
-          type: 'practice',
-          moduleId: test.moduleId || 'all',
-          questionsAnswered: test.totalQuestions,
-          timeSpent: test.timeSpent,
-          accuracy: test.score
-        });
-      });
-    }
-
-    // Sort by date
-    sessions.sort((a, b) => b.date.getTime() - a.date.getTime());
-    setStudySessions(sessions);
-  };
 
   const getStudyStreak = (): number => {
     if (studySessions.length === 0) return 0;

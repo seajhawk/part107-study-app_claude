@@ -129,17 +129,17 @@ export default function Home() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Cards Studied</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Cards Studied</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {stats.cardsStudied}/{stats.totalCards}
                 </p>
               </div>
               <Brain className="h-8 w-8 text-blue-500" />
             </div>
-            <div className="mt-3 bg-gray-200 rounded-full h-2">
+            <div className="mt-3 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div 
                 className="bg-blue-500 h-2 rounded-full" 
                 style={{ width: `${(stats.cardsStudied / stats.totalCards) * 100}%` }}
@@ -147,45 +147,45 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Practice Tests</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.practiceTests}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Practice Tests</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.practiceTests}</p>
               </div>
               <Target className="h-8 w-8 text-green-500" />
             </div>
-            <p className="text-sm text-gray-500 mt-2">Completed</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Completed</p>
           </div>
 
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Average Score</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.averageScore}%</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Average Score</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.averageScore}%</p>
               </div>
               <TrendingUp className="h-8 w-8 text-yellow-500" />
             </div>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               {stats.averageScore >= 70 ? '✅ Passing' : '❌ Keep studying'}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Study Streak</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.studyStreak}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Study Streak</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.studyStreak}</p>
               </div>
               <Trophy className="h-8 w-8 text-purple-500" />
             </div>
-            <p className="text-sm text-gray-500 mt-2">Days in a row</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Days in a row</p>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {quickActions.map((action) => {
               const Icon = action.icon;
@@ -209,29 +209,29 @@ export default function Home() {
         </div>
 
         {/* Study Progress by Module */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Study Progress by Module</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Study Progress by Module</h2>
           <div className="space-y-4">
             {studyModules.map((module) => {
               const Icon = module.icon;
               return (
-                <div key={module.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={module.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center">
                       <div className={`${module.color} p-2 rounded-lg mr-3`}>
                         <Icon className="h-5 w-5 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">{module.title}</h3>
-                        <p className="text-sm text-gray-600">{module.description}</p>
+                        <h3 className="font-medium text-gray-900 dark:text-white">{module.title}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{module.description}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">{module.progress}%</p>
-                      <p className="text-xs text-gray-500">{module.percentage}% of exam</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{module.progress}%</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{module.percentage}% of exam</p>
                     </div>
                   </div>
-                  <div className="bg-gray-200 rounded-full h-2">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div 
                       className={`${module.color} h-2 rounded-full transition-all duration-300`}
                       style={{ width: `${module.progress}%` }}
@@ -244,15 +244,15 @@ export default function Home() {
         </div>
 
         {/* Study Tips */}
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border">
-          <h2 className="text-xl font-semibold text-gray-900 mb-3">💡 Today&apos;s Study Tip</h2>
-          <p className="text-gray-700 mb-3">
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg p-6 border dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">💡 Today&apos;s Study Tip</h2>
+          <p className="text-gray-700 dark:text-gray-300 mb-3">
             Focus on airspace regulations today! Understanding Class B, C, and D airspace restrictions 
             is crucial for the exam and real-world operations.
           </p>
           <Link 
             href="/study/airspace"
-            className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
+            className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
           >
             <Play className="h-4 w-4 mr-1" />
             Start Airspace Module

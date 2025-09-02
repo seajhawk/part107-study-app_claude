@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getAllFlashcards, getFlashcardsByModule, studyModules, Flashcard } from '@/data/studyData';
+import { getUserProgress, updateUserProgress, migrateFromLocalStorage } from '@/utils/storage';
 import { 
   Brain,
   RotateCcw,
@@ -66,10 +67,14 @@ export default function FlashcardsPageContent() {
   }, [selectedModule, difficultyFilter, loadCards]);
 
   const loadProgress = () => {
-    const saved = localStorage.getItem('flashcard-progress');
-    if (saved) {
-      const progressData = JSON.parse(saved);
+    try {
+      // Attempt to migrate from localStorage if needed
+      migrateFromLocalStorage();
+      
+      const userProgress = getUserProgress();
+      const progressData = userProgress.flashcardProgress;
       const progressMap = new Map();
+      
       Object.entries(progressData).forEach(([key, value]: [string, unknown]) => {
         const cardProgress = value as CardProgress & { nextReview: string };
         progressMap.set(key, {
@@ -78,18 +83,24 @@ export default function FlashcardsPageContent() {
         });
       });
       setProgress(progressMap);
+    } catch (error) {
+      console.error('Error loading flashcard progress:', error);
     }
   };
 
   const saveProgress = (newProgress: Map<string, CardProgress>) => {
-    const progressObj: { [key: string]: unknown } = {};
-    newProgress.forEach((value, key) => {
-      progressObj[key] = {
-        ...value,
-        nextReview: value.nextReview.toISOString()
-      };
-    });
-    localStorage.setItem('flashcard-progress', JSON.stringify(progressObj));
+    try {
+      const progressObj: { [key: string]: unknown } = {};
+      newProgress.forEach((value, key) => {
+        progressObj[key] = {
+          ...value,
+          nextReview: value.nextReview.toISOString()
+        };
+      });
+      updateUserProgress({ flashcardProgress: progressObj });
+    } catch (error) {
+      console.error('Error saving flashcard progress:', error);
+    }
   };
 
   const shuffleArray = <T,>(array: T[]): T[] => {

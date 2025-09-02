@@ -1,5 +1,10 @@
+import Layout from '@/components/Layout';
 import ProgressPageContent from '@/components/ProgressPageContent';
 
 export default function ProgressPage() {
-  return <ProgressPageContent />;
+  return (
+    <Layout>
+      <ProgressPageContent />
+    </Layout>
+  );
 }

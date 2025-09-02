@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getAllQuestions, getQuestionsByModule, studyModules, Question } from '@/data/studyData';
+import { getUserProgress, updateUserProgress, migrateFromLocalStorage } from '@/utils/storage';
 import { 
   Target,
   Clock,
@@ -47,7 +48,12 @@ export default function PracticePageContent() {
   const saveTestResult = useCallback((result: TestResult) => {
     setTestHistory(prev => {
       const updatedHistory = [...prev, result];
-      localStorage.setItem('practice-test-history', JSON.stringify(updatedHistory));
+      // Convert dates to strings for storage
+      const historyForStorage = updatedHistory.map(test => ({
+        ...test,
+        date: test.date.toISOString()
+      }));
+      updateUserProgress({ testHistory: historyForStorage });
       return updatedHistory;
     });
   }, []);
@@ -99,16 +105,18 @@ export default function PracticePageContent() {
   }, [testCompleted, questions.length, generateTestResult]);
 
   const loadTestHistory = () => {
-    const saved = localStorage.getItem('practice-test-history');
-    if (saved) {
-      const history = JSON.parse(saved).map((test: unknown) => {
-        const testResult = test as TestResult & { date: string };
-        return {
-          ...testResult,
-          date: new Date(testResult.date)
-        };
-      });
+    try {
+      // Attempt to migrate from localStorage if needed
+      migrateFromLocalStorage();
+      
+      const progress = getUserProgress();
+      const history = progress.testHistory.map((test) => ({
+        ...test,
+        date: new Date(test.date)
+      }));
       setTestHistory(history);
+    } catch (error) {
+      console.error('Error loading test history:', error);
     }
   };
 
